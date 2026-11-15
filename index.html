@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Enrollment Form</title>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-4" style="max-width:600px">
+  <h3>Student Enrollment Form</h3>
+  <form id="stuForm" onsubmit="return false;">
+    <div class="form-group"><label>Roll No</label>
+      <input type="number" id="rollNo" class="form-control" onchange="getStudent()"></div>
+    <div class="form-group"><label>Full Name</label>
+      <input type="text" id="fullName" class="form-control" disabled></div>
+    <div class="form-group"><label>Class</label>
+      <input type="text" id="stuClass" class="form-control" disabled></div>
+    <div class="form-group"><label>Birth Date</label>
+      <input type="date" id="birthDate" class="form-control" disabled></div>
+    <div class="form-group"><label>Address</label>
+      <input type="text" id="address" class="form-control" disabled></div>
+    <div class="form-group"><label>Enrollment Date</label>
+      <input type="date" id="enrollDate" class="form-control" disabled></div>
+    <button id="btnSave" class="btn btn-primary" onclick="saveStudent()" disabled>Save</button>
+    <button id="btnChange" class="btn btn-warning" onclick="changeStudent()" disabled>Update</button>
+    <button id="btnReset" class="btn btn-secondary" onclick="resetForm()" disabled>Reset</button>
+  </form>
+</div>
+<script>
+// TODO: put your own connection token from Login2Xplore here
+var connToken = "PASTE_YOUR_TOKEN_HERE";
+var dbName = "SCHOOL-DB";
+var relName = "STUDENT-TABLE";
+var baseUrl = "https://api.login2explore.com:5577";
+var imlPath = "/api/iml";
+var irlPath = "/api/irl";
+var fields = ["fullName","stuClass","birthDate","address","enrollDate"];
+
+function callApi(path, body) {
+  return fetch(baseUrl + path, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  }).then(function (r) { return r.json(); });
+}
+
+function setDisabled(list, value) {
+  list.forEach(function (id) { document.getElementById(id).disabled = value; });
+}
+
+function resetForm() {
+  document.getElementById("rollNo").value = "";
+  fields.forEach(function (id) { document.getElementById(id).value = ""; });
+  document.getElementById("rollNo").disabled = false;
+  setDisabled(fields.concat(["btnSave","btnChange","btnReset"]), true);
+  document.getElementById("rollNo").focus();
+}
+
+function getStudent() {
+  var roll = document.getElementById("rollNo").value;
+  if (roll === "") return;
+  callApi(irlPath, {
+    token: connToken, cmd: "GET_BY_KEY", dbName: dbName, rel: relName,
+    jsonStr: JSON.stringify({ "Roll-No": Number(roll) }), createTime: true, updateTime: true
+  }).then(function (res) {
+    setDisabled(fields.concat(["btnReset"]), false);
+    if (res.status === 400) {
+      // new student
+      setDisabled(["btnSave"], false);
+      document.getElementById("fullName").focus();
+    } else if (res.status === 200) {
+      var data = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
+      localStorage.setItem("recno", data.rec_no);
+      var rec = data.record;
+      document.getElementById("fullName").value = rec["Full-Name"];
+      document.getElementById("stuClass").value = rec["Class"];
+      document.getElementById("birthDate").value = rec["Birth-Date"];
+      document.getElementById("address").value = rec["Address"];
+      document.getElementById("enrollDate").value = rec["Enrollment-Date"];
+      document.getElementById("rollNo").disabled = true;
+      setDisabled(["btnChange"], false);
+    } else {
+      alert("Error: " + JSON.stringify(res));
+    }
+  }).catch(function (e) { alert("Request failed: " + e); });
+}
+
+function validateAndBuild() {
+  var obj = {
+    "Roll-No": Number(document.getElementById("rollNo").value),
+    "Full-Name": document.getElementById("fullName").value.trim(),
+    "Class": document.getElementById("stuClass").value.trim(),
+    "Birth-Date": document.getElementById("birthDate").value,
+    "Address": document.getElementById("address").value.trim(),
+    "Enrollment-Date": document.getElementById("enrollDate").value
+  };
+  for (var k in obj) {
+    if (obj[k] === "" || obj[k] === 0) { alert("Please fill: " + k); return null; }
+  }
+  return obj;
+}
+
+function saveStudent() {
+  var obj = validateAndBuild();
+  if (!obj) return;
+  callApi(imlPath, {
+    token: connToken, cmd: "PUT", dbName: dbName, rel: relName,
+    jsonStr: JSON.stringify(obj)
+  }).then(function (res) {
+    if (res.status === 200) { alert("Saved"); resetForm(); }
+    else alert("Error: " + JSON.stringify(res));
+  }).catch(function (e) { alert("Request failed: " + e); });
+}
+
+function changeStudent() {
+  var obj = validateAndBuild();
+  if (!obj) return;
+  callApi(imlPath, {
+    token: connToken, cmd: "UPDATE", dbName: dbName, rel: relName,
+    jsonStr: JSON.stringify(obj), record: localStorage.getItem("recno")
+  }).then(function (res) {
+    if (res.status === 200) { alert("Updated"); resetForm(); }
+    else alert("Error: " + JSON.stringify(res));
+  }).catch(function (e) { alert("Request failed: " + e); });
+}
+
+resetForm();
+</script>
+</body>
+</html>
