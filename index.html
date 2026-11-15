@@ -32,7 +32,7 @@
 var connToken = "PASTE_YOUR_TOKEN_HERE";
 var dbName = "SCHOOL-DB";
 var relName = "STUDENT-TABLE";
-var baseUrl = "https://api.login2explore.com:5577";
+var baseUrl = "https://api.jsonpowerdb.com:5567";
 var imlPath = "/api/iml";
 var irlPath = "/api/irl";
 var fields = ["fullName","stuClass","birthDate","address","enrollDate"];
@@ -62,7 +62,7 @@ function getStudent() {
   if (roll === "") return;
   callApi(irlPath, {
     token: connToken, cmd: "GET_BY_KEY", dbName: dbName, rel: relName,
-    jsonStr: JSON.stringify({ "Roll-No": Number(roll) }), createTime: true, updateTime: true
+    jsonStr: { "Roll-No": Number(roll) }, createTime: true, updateTime: true
   }).then(function (res) {
     setDisabled(fields.concat(["btnReset"]), false);
     if (res.status === 400) {
@@ -106,7 +106,7 @@ function saveStudent() {
   if (!obj) return;
   callApi(imlPath, {
     token: connToken, cmd: "PUT", dbName: dbName, rel: relName,
-    jsonStr: JSON.stringify(obj)
+    jsonStr: obj
   }).then(function (res) {
     if (res.status === 200) { alert("Saved"); resetForm(); }
     else alert("Error: " + JSON.stringify(res));
@@ -116,9 +116,15 @@ function saveStudent() {
 function changeStudent() {
   var obj = validateAndBuild();
   if (!obj) return;
+  var upd = {};
+  upd[localStorage.getItem("recno")] = {
+    "Full-Name": obj["Full-Name"], "Class": obj["Class"],
+    "Birth-Date": obj["Birth-Date"], "Address": obj["Address"],
+    "Enrollment-Date": obj["Enrollment-Date"]
+  };
   callApi(imlPath, {
     token: connToken, cmd: "UPDATE", dbName: dbName, rel: relName,
-    jsonStr: JSON.stringify(obj), record: localStorage.getItem("recno")
+    jsonStr: upd
   }).then(function (res) {
     if (res.status === 200) { alert("Updated"); resetForm(); }
     else alert("Error: " + JSON.stringify(res));
